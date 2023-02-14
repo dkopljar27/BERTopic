@@ -14,7 +14,7 @@ The name of this topic is:
 
 
 class TextGeneration(BaseRepresentation):
-    """ Text2Text or text generation with transformers
+    """Text2Text or text generation with transformers
 
     Arguments:
         model: A transformers pipeline that should be initialized as "text-generation"
@@ -59,31 +59,37 @@ class TextGeneration(BaseRepresentation):
     representation_model = TextGeneration(generator)
     ```
     """
-    def __init__(self,
-                 model: Union[str, pipeline],
-                 prompt: str = None,
-                 pipeline_kwargs: Mapping[str, Any] = {},
-                 random_state: int = 42):
+
+    def __init__(
+        self,
+        model: Union[str, pipeline],
+        prompt: str = None,
+        pipeline_kwargs: Mapping[str, Any] = {},
+        random_state: int = 42,
+    ):
         set_seed(random_state)
         if isinstance(model, str):
             self.model = pipeline("text-generation", model=model)
         elif isinstance(model, Pipeline):
             self.model = model
         else:
-            raise ValueError("Make sure that the HF model that you"
-                             "pass is either a string referring to a"
-                             "HF model or a `transformers.pipeline` object.")
+            raise ValueError(
+                "Make sure that the HF model that you"
+                "pass is either a string referring to a"
+                "HF model or a `transformers.pipeline` object."
+            )
         self.prompt = prompt if prompt is not None else DEFAULT_PROMPT
         self.default_prompt_ = DEFAULT_PROMPT
         self.pipeline_kwargs = pipeline_kwargs
 
-    def extract_topics(self,
-                       topic_model,
-                       documents: pd.DataFrame,
-                       c_tf_idf: csr_matrix,
-                       topics: Mapping[str, List[Tuple[str, float]]]
-                       ) -> Mapping[str, List[Tuple[str, float]]]:
-        """ Extract topic representations and return a single label
+    def extract_topics(
+        self,
+        topic_model,
+        documents: pd.DataFrame,
+        c_tf_idf: csr_matrix,
+        topics: Mapping[str, List[Tuple[str, float]]],
+    ) -> Mapping[str, List[Tuple[str, float]]]:
+        """Extract topic representations and return a single label
 
         Arguments:
             topic_model: A BERTopic model
@@ -95,8 +101,10 @@ class TextGeneration(BaseRepresentation):
             updated_topics: Updated topic representations
         """
         # Extract the top 4 representative documents per topic
-        if self.prompt != DEFAULT_PROMPT and "[DOCUMENT]" in self.prompt:
-            repr_docs_mappings, _, _ = topic_model._extract_representative_docs(c_tf_idf, documents, topics, 500, 4)
+        if self.prompt != DEFAULT_PROMPT and "[DOCUMENTS]" in self.prompt:
+            repr_docs_mappings, _, _ = topic_model._extract_representative_docs(
+                c_tf_idf, documents, topics, 500, 4
+            )
         else:
             repr_docs_mappings = {topic: None for topic in topics.keys()}
 
@@ -108,10 +116,15 @@ class TextGeneration(BaseRepresentation):
 
             # Extract result from generator and use that as label
             topic_description = self.model(prompt, **self.pipeline_kwargs)
-            topic_description = [(description["generated_text"].replace(prompt, ""), 1) for description in topic_description]
+            topic_description = [
+                (description["generated_text"].replace(prompt, ""), 1)
+                for description in topic_description
+            ]
 
             if len(topic_description) < 10:
-                topic_description += [("", 0) for _ in range(10-len(topic_description))]
+                topic_description += [
+                    ("", 0) for _ in range(10 - len(topic_description))
+                ]
 
             updated_topics[topic] = topic_description
 
